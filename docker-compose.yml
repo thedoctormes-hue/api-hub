@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://apihub:apihub@db:5432/apihub
+      - DEBUG=true
+      - MASTER_KEY=change-me-in-production
+    depends_on:
+      - db
+    volumes:
+      - ./src:/app/src:rw  # для разработки
+      - ./requirements.txt:/app/requirements.txt:ro
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=apihub
+      - POSTGRES_USER=apihub
+      - POSTGRES_PASSWORD=apihub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

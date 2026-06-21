@@ -1,0 +1,24 @@
+name: openai
+type: llm
+base_url: https://api.openai.com/v1
+auth:
+  type: bearer
+  header: Authorization
+  prefix: "Bearer "
+rate_limit:
+  requests_per_minute: 60
+  requests_per_day: 10000
+timeout: 30
+retry:
+  count: 3
+  delay_ms: 1000
+  backoff: exponential
+models:
+  - id: gpt-4o
+    name: GPT-4o
+    type: chat
+    max_tokens: 128000
+health_check:
+  enabled: true
+  interval_sec: 15
+  endpoint: /models

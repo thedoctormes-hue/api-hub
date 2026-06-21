@@ -1,0 +1,23 @@
+name: anthropic
+type: llm
+base_url: https://api.anthropic.com
+auth:
+  type: header
+  header: x-api-key
+rate_limit:
+  requests_per_minute: 50
+  requests_per_day: 5000
+timeout: 60
+retry:
+  count: 3
+  delay_ms: 1000
+  backoff: exponential
+models:
+  - id: claude-sonnet-4-20250514
+    name: Claude Sonnet 4
+    type: chat
+    max_tokens: 200000
+health_check:
+  enabled: true
+  interval_sec: 15
+  endpoint: /v1/models

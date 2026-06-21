@@ -1,0 +1,18 @@
+routing:
+  llm:
+    primary: openrouter
+    fallbacks:
+      - openai
+      - anthropic
+  geocode:
+    primary: dadata
+    fallbacks: []
+  validate:
+    primary: abstractapi
+    fallbacks: []
+  scrape:
+    primary: scraperapi
+    fallbacks: []
+  generate:
+    primary: pdfgeneratorapi
+    fallbacks: []
