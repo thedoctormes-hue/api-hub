@@ -1,3 +1,11 @@
+---
+description: "api-hub — README"
+type: readme
+last_reviewed: 2026-06-21
+last_code_change: 2026-06-21
+status: active
+---
+
 # 🔌 API Hub
 
 > **Владелец:** DoctorM&Ai | **Статус:** active | **Версия:** 0.1.0
