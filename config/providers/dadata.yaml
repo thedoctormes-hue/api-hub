@@ -1,0 +1,19 @@
+name: dadata
+type: geocode
+base_url: https://suggestions.dadata.ru/suggestions/api/4_1/rs
+auth:
+  type: header
+  header: Authorization
+  prefix: "Token "
+rate_limit:
+  requests_per_minute: 30
+  requests_per_day: 10000
+timeout: 10
+retry:
+  count: 2
+  delay_ms: 500
+  backoff: linear
+health_check:
+  enabled: true
+  interval_sec: 30
+  endpoint: /suggest/address

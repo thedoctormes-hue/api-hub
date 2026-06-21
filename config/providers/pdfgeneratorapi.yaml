@@ -1,0 +1,19 @@
+name: pdfgeneratorapi
+type: generate
+base_url: https://us1.pdfgeneratorapi.com/api/v4
+auth:
+  type: bearer
+  header: Authorization
+  prefix: "Bearer "
+rate_limit:
+  requests_per_minute: 5
+  requests_per_day: 25
+timeout: 30
+retry:
+  count: 2
+  delay_ms: 1000
+  backoff: linear
+health_check:
+  enabled: true
+  interval_sec: 60
+  endpoint: /templates
