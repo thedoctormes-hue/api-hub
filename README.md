@@ -12,7 +12,11 @@ status: active
 
 ## Описание
 
-Универсальный API-шлюз для всех внешних API. Загружаешь свои ключи — получаешь один эндпoinт с маршрутизацией, мониторингом, fallback и rate limiting. В отличие от OpenRouter и LiteLLM, работает не только с LLM, а с любыми API.
+Универсальный API-шлюз для всех внешних API. Загружаешь свои ключи — получаешь один эндпоинт с маршрутизацией, мониторингом, fallback и rate limiting. В отличие от OpenRouter и LiteLLM, работает не только с LLM, а с любыми API.
+
+### Бесплатные ключи
+
+Проект интегрирован с free-api-hunter. В базу предзагружены 25 бесплатных ключей от 9 провайдеров (Cerebras, Cohere, Mistral, Cloudflare, ElevenLabs, Gemini, Manus, Pollinations, OCR.space). Ключи автоматически проверяются health-check сервисом, неработающие отключаются через circuit breaker.
 
 ---
 
