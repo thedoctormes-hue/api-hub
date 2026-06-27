@@ -1,0 +1,32 @@
+name: cloudflare
+type: llm
+is_free: true
+free_source: free_api_hunter
+base_url: https://api.cloudflare.com/client/v1
+auth:
+  type: bearer
+  header: Authorization
+  prefix: 'Bearer '
+rate_limit:
+  requests_per_day: 10000
+timeout: 30
+retry:
+  count: 3
+  delay_ms: 1000
+  backoff: exponential
+models:
+- id: '@cf/meta/llama-3.3-70b'
+  name: Llama 3.3 70B
+  type: chat
+  max_tokens: 131072
+- id: '@cf/meta/llama-4-scout'
+  name: Llama 4 Scout
+  type: chat
+  max_tokens: 131072
+- id: '@cf/openai/gpt-oss-120b'
+  name: GPT-oss 120B
+  type: chat
+  max_tokens: 131072
+health_check:
+  enabled: true
+  interval_sec: 60

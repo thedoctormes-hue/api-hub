@@ -1,0 +1,19 @@
+name: ocr-space
+type: ocr
+is_free: true
+free_source: free_api_hunter
+base_url: https://api.ocr.space/parse/image
+auth:
+  type: query_param
+  query_param: apikey
+rate_limit:
+  requests_per_month: 25000
+timeout: 30
+retry:
+  count: 2
+  delay_ms: 1000
+  backoff: linear
+models: []
+health_check:
+  enabled: true
+  interval_sec: 120
