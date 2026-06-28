@@ -38,3 +38,19 @@ async def test_health_db_error(client):
         assert response.status_code == 200
         data = response.json()
         assert "error" in data["database"]
+
+
+@pytest.mark.asyncio
+async def test_health_returns_version(client):
+    """Health-check содержит версию сервиса."""
+    mock_conn = AsyncMock()
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("src.routes.health.engine", mock_engine):
+        ac, _ = client
+        response = await ac.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert "version" in data

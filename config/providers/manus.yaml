@@ -4,9 +4,9 @@ is_free: true
 free_source: free_api_hunter
 base_url: https://api.manus.ai/v2
 auth:
-  type: bearer
-  header: Authorization
-  prefix: "Bearer "
+  type: apikey
+  header: x-manus-api-key
+  prefix: ""
 rate_limit:
   credits_per_day: 300
 timeout: 120
