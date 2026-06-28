@@ -117,15 +117,18 @@ async def check_key_health(session: AsyncSession, api_key: ApiKey) -> dict:
     url = f"{base_url}{health_endpoint}"
 
     headers = {}
+    params = {}
     if provider.auth_type == "bearer":
         headers["Authorization"] = f"Bearer {api_key_value}"
     elif provider.auth_type == "header":
         headers[provider.auth_key_name] = api_key_value
+    elif provider.auth_type == "query_param":
+        params[provider.auth_key_name] = api_key_value
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             start = datetime.now(timezone.utc)
-            response = await client.get(url, headers=headers)
+            response = await client.get(url, headers=headers, params=params)
             latency_ms = int((datetime.now(timezone.utc) - start).total_seconds() * 1000)
 
         status = "ok" if response.status_code < 400 else "error"
