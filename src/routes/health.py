@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import text
 from src.config.settings import get_settings
 from src.config.database import engine
 import asyncio
@@ -12,7 +13,7 @@ async def health_check():
     try:
         # Проверяем подключение к БД
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         db_status = "ok"
     except Exception as e:
         db_status = f"error: {e}"

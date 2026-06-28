@@ -1,7 +1,7 @@
 """Модель ключа пользователя для провайдера (ссылка на Vault)."""
 
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
@@ -16,6 +16,10 @@ class ApiKey(Base):
     provider_id = Column(UUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
     key_ref = Column(String(255), nullable=False)  # ссылка на ключ в Vault (НЕ сам ключ!)
     key_alias = Column(String(64), nullable=False)  # человекочитаемое имя: "основной", "запасной"
+    source = Column(String(32), nullable=False, default="manual")  # manual, free_api_hunter, imported
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    credits_balance = Column(Integer, nullable=True)
+    rate_limit_type = Column(String(32), nullable=True)  # requests_per_day, tokens_per_minute, credits_total
     is_active = Column(Boolean, default=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     last_status = Column(String(16), nullable=True)  # ok, error, rate_limited

@@ -1,0 +1,21 @@
+name: pollinations
+type: image
+is_free: true
+free_source: free_api_hunter
+base_url: https://image.pollinations.ai/prompt
+auth:
+  type: query_param
+rate_limit:
+  requests_per_minute: 5
+timeout: 60
+retry:
+  count: 1
+  delay_ms: 2000
+  backoff: linear
+models:
+- id: default
+  name: Default
+  type: image
+health_check:
+  enabled: true
+  interval_sec: 120

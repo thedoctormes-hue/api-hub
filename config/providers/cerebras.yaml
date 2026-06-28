@@ -1,0 +1,26 @@
+name: cerebras
+type: llm
+is_free: true
+free_source: free_api_hunter
+base_url: https://api.cerebras.ai/v1
+auth:
+  type: bearer
+  header: Authorization
+  prefix: 'Bearer '
+rate_limit:
+  requests_per_minute: 5
+  tokens_per_minute: 30000
+timeout: 60
+retry:
+  count: 3
+  delay_ms: 1000
+  backoff: exponential
+models:
+- id: zai-glm-4.7
+  name: GLM-4.7
+  type: chat
+  max_tokens: 8192
+health_check:
+  enabled: true
+  interval_sec: 30
+  endpoint: /models

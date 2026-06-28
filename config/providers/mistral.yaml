@@ -1,0 +1,34 @@
+name: mistral
+type: llm
+is_free: true
+free_source: free_api_hunter
+base_url: https://api.mistral.ai/v1
+auth:
+  type: bearer
+  header: Authorization
+  prefix: 'Bearer '
+rate_limit:
+  requests_per_minute: 50
+  tokens_per_minute: 50000
+timeout: 30
+retry:
+  count: 3
+  delay_ms: 1000
+  backoff: exponential
+models:
+- id: mistral-small-latest
+  name: Mistral Small
+  type: chat
+  max_tokens: 131072
+- id: mistral-large-latest
+  name: Mistral Large
+  type: chat
+  max_tokens: 131072
+- id: codestral-latest
+  name: Codestral
+  type: chat
+  max_tokens: 131072
+health_check:
+  enabled: true
+  interval_sec: 30
+  endpoint: /models

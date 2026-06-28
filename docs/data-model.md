@@ -1,6 +1,6 @@
 # 🗄️ Модель данных
 
-**Версия:** 0.1 | **Дата:** 2026-06-19
+**Версия:** 0.2 | **Дата:** 2026-06-27
 
 ---
 
@@ -30,6 +30,8 @@ timeout_sec     INTEGER default 30
 retry_count     INTEGER default 3
 retry_delay_ms  INTEGER default 1000
 is_active       BOOLEAN default true
+is_free         BOOLEAN default false  -- бесплатный провайдер
+free_source     VARCHAR(32)          -- free_api_hunter, manual
 config          JSONB           -- доп. настройки провайдера
 created_at      TIMESTAMP
 updated_at      TIMESTAMP
@@ -42,6 +44,10 @@ user_id         UUID FK -> User
 provider_id     UUID FK -> Provider
 key_ref         VARCHAR(255)    -- ссылка на ключ в Vault (НЕ сам ключ!)
 key_alias       VARCHAR(64)     -- человекочитаемое имя: "основной", "запасной"
+source          VARCHAR(32)     -- manual, free_api_hunter, imported
+verified_at     TIMESTAMP       -- время последней верификации
+credits_balance INTEGER         -- остаток кредитов/квот
+rate_limit_type VARCHAR(32)     -- requests_per_day, tokens_per_minute, credits_total
 is_active       BOOLEAN default true
 last_used_at    TIMESTAMP
 last_status     VARCHAR(16)     -- ok, error, rate_limited
@@ -97,6 +103,18 @@ updated_at      TIMESTAMP
 
 ---
 
+### KeyHealthLog (лог здоровья ключей)
+```
+id              UUID PK
+api_key_id      UUID FK -> ApiKey
+checked_at      TIMESTAMP
+status          VARCHAR(16)     -- ok, error, rate_limited, timeout
+latency_ms      INTEGER
+quota_remaining INTEGER
+error_text      TEXT
+created_at      TIMESTAMP
+```
+
 ## Индексы
 
 ```
@@ -114,6 +132,10 @@ CREATE INDEX idx_quotas_user_provider ON Quota(user_id, provider_id, period);
 
 -- Circuit breaker: быстрый поиск по провайдеру+ключу
 CREATE INDEX idx_circuit_breaker ON CircuitBreaker(provider_id, api_key_id);
+
+-- KeyHealthLog: быстрый поиск по ключу и времени
+CREATE INDEX idx_health_log_key_time ON KeyHealthLog(api_key_id, checked_at DESC);
+CREATE INDEX idx_health_log_status ON KeyHealthLog(status);
 ```
 
 ---
