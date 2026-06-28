@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # База данных
-    DATABASE_URL: str = "postgresql+asyncpg://apihub:apihub@localhost:5432/apihub"
+    DATABASE_URL: str = "postgresql+asyncpg://apihub:apihub123@localhost:5432/apihub"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

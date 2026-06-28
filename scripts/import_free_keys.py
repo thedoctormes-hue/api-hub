@@ -93,6 +93,21 @@ async def import_keys(db_uri: str, keys_file: str):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Создаём системного пользователя если не существует
+    from src.models.user import User
+    async with async_session() as session:
+        existing = await session.execute(
+            select(User).where(User.id == "00000000-0000-0000-0000-000000000000")
+        )
+        if not existing.scalar_one_or_none():
+            session.add(User(
+                id="00000000-0000-0000-0000-000000000000",
+                name="system",
+                api_key="sys-internal-key",
+            ))
+            await session.commit()
+            logger.info("Created system user")
+
     with open(keys_file, "r") as f:
         keys_data = json.load(f)
 
