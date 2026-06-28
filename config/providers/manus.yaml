@@ -2,11 +2,11 @@ name: manus
 type: agent
 is_free: true
 free_source: free_api_hunter
-base_url: https://api.manus.ai/v1
+base_url: https://api.manus.ai/v2
 auth:
   type: bearer
   header: Authorization
-  prefix: 'Bearer '
+  prefix: "Bearer "
 rate_limit:
   credits_per_day: 300
 timeout: 120
