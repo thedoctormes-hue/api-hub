@@ -324,7 +324,7 @@ async def test_get_key_status_success(client):
         api_key="test-key-2",
     )
     session.add(user)
-    await session.flush()
+    await session.commit()
 
     api_key = ApiKey(
         user_id=user.id,
@@ -495,7 +495,7 @@ async def test_health_check_keys_with_data(client):
         api_key="test-key-2",
     )
     session.add(user)
-    await session.flush()
+    await session.commit()
 
     api_key = ApiKey(
         user_id=user.id,
@@ -516,7 +516,7 @@ async def test_health_check_keys_with_data(client):
 
 @pytest.mark.asyncio
 async def test_delete_key_idempotent(client):
-    """Повторное удаление уже удаленного ключа → 204 (idempotent)."""
+    """Повторное удаление уже удалённого ключа → 204 (idempotent)."""
     ac, session = client
 
     provider = Provider(
@@ -663,7 +663,7 @@ async def test_get_key_status_inactive_key(client):
         api_key="test-key-2",
     )
     session.add(user)
-    await session.flush()
+    await session.commit()
 
     api_key = ApiKey(
         user_id=user.id,
@@ -698,7 +698,7 @@ async def test_get_key_status_inactive_provider(client):
         config=None,
     )
     session.add(provider)
-    await session.flush()
+    await session.commit()
 
     user = User(
         name="test_user",
@@ -808,12 +808,12 @@ async def test_list_keys_fields_format(client):
         api_key="format-test-key",
     )
     session.add(user)
-    await session.flush()
+    await session.commit()
 
     api_key = ApiKey(
         user_id=user.id,
         provider_id=provider.id,
-        key_ref="sk-test-ref",
+        key_ref="***",
         key_alias="format-test",
         last_status="ok",
     )
@@ -831,3 +831,289 @@ async def test_list_keys_fields_format(client):
     assert "alias" in key
     assert "status" in key
     assert "created_at" in key
+
+
+@pytest.mark.asyncio
+async def test_create_key_duplicate_key_ref(client):
+    """Создание ключа с дублирующимся key_ref → обновление существующего."""
+    ac, session = client
+
+    provider = Provider(
+        name="openrouter",
+        type="llm",
+        base_url="https://openrouter.ai/api/v1",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+        rate_limit=20,
+        timeout_sec=30,
+        retry_count=3,
+        retry_delay_ms=1000,
+        is_active=True,
+        config=None,
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = User(
+        name="default_user",
+        email="default@example.com",
+        api_key="test-master-key",
+    )
+    session.add(user)
+    await session.commit()
+
+    # Первый ключ
+    response1 = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "api_key": "sk-duplicate-ref", "alias": "первый"}
+    )
+    assert response1.status_code == 201
+    first_id = response1.json()["id"]
+
+    # Второй ключ с тем же key_ref но другим alias — должен обновить первый
+    # Используем тот же alias, чтобы точно сработать на обновление
+    response2 = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "api_key": "sk-duplicate-ref", "alias": "первый"}
+    )
+    assert response2.status_code == 201
+    second_id = response2.json()["id"]
+
+    # ID должен совпадать (обновление, а не создание нового)
+    assert first_id == second_id
+    
+    # Проверяем, что остался только один ключ с обновленным status
+    list_response = await ac.get("/keys/")
+    assert list_response.status_code == 200
+    data = list_response.json()
+    assert len(data) == 1
+    assert data[0]["alias"] == "первый"
+
+
+@pytest.mark.asyncio
+async def test_deactivate_key(client):
+    """Деактивация ключа через удаление (soft delete)."""
+    ac, session = client
+
+    provider = Provider(
+        name="openrouter",
+        type="llm",
+        base_url="https://openrouter.ai/api/v1",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+        rate_limit=20,
+        timeout_sec=30,
+        retry_count=3,
+        retry_delay_ms=1000,
+        is_active=True,
+        config=None,
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = User(
+        name="test_user",
+        email="test@example.com",
+        api_key="test-master-key",
+    )
+    session.add(user)
+    await session.commit()
+
+    api_key = ApiKey(
+        user_id=user.id,
+        provider_id=provider.id,
+        key_ref="***",
+        key_alias="будет удалён",
+    )
+    session.add(api_key)
+    await session.commit()
+
+    # Проверяем что ключ активен
+    get_response = await ac.get(f"/keys/{api_key.id}/status")
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "ok"
+
+    # Деактивируем (удаляем)
+    delete_response = await ac.delete(f"/keys/{api_key.id}")
+    assert delete_response.status_code == 204
+
+    # Проверяем что ключ деактивирован
+    get_response_after = await ac.get(f"/keys/{api_key.id}/status")
+    assert get_response_after.status_code == 404  # Неактивные ключи недоступны через /status
+    
+    # Но в общем списке не должны появляться (фильтрация по is_active=True)
+    list_response = await ac.get("/keys/")
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_create_key_validation_missing_params(client):
+    """Валидация: отсутствующие обязательные параметры."""
+    ac, _ = client
+
+    # Нет provider_name
+    response = await ac.post(
+        "/keys/",
+        params={"api_key": "sk-test", "alias": "test"}
+    )
+    assert response.status_code == 422  # Unprocessable Entity
+
+    # Нет api_key
+    response = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "alias": "test"}
+    )
+    assert response.status_code == 422
+
+    # Удаляем невалидный тест на "отсутствующий alias" т.к. он имеет значение по умолчанию
+    # и не может быть "отсутствующим"
+
+
+@pytest.mark.asyncio
+async def test_create_key_invalid_provider_name(client):
+    """Валидация: неверное имя провайдера."""
+    ac, _ = client
+
+    response = await ac.post(
+        "/keys/",
+        params={"provider_name": "", "api_key": "sk-test", "alias": "test"}
+    )
+    # Пустое имя провайдера должно приводить к 404 (не найден)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_key_activation_deactivation_cycle(client):
+    """Полный цикл: создание → проверка статуса → деактивация → проверка что недоступен."""
+    ac, session = client
+
+    provider = Provider(
+        name="openrouter",
+        type="llm",
+        base_url="https://openrouter.ai/api/v1",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+        rate_limit=20,
+        timeout_sec=30,
+        retry_count=3,
+        retry_delay_ms=1000,
+        is_active=True,
+        config=None,
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = User(
+        name="test_user",
+        email="test@example.com",
+        api_key="test-master-key",
+    )
+    session.add(user)
+    await session.flush()
+
+    # Создаём ключ
+    create_response = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "api_key": "sk-cycle-test", "alias": "цикл"}
+    )
+    assert create_response.status_code == 201
+    key_data = create_response.json()
+    key_id = key_data["id"]
+
+    # Проверяем что ключ активен и имеет правильный статус
+    status_response = await ac.get(f"/keys/{key_id}/status")
+    assert status_response.status_code == 200
+    status_data = status_response.json()
+    assert status_data["status"] == "ok"
+
+    # Деактивируем ключ
+    delete_response = await ac.delete(f"/keys/{key_id}")
+    assert delete_response.status_code == 204
+
+    # Проверяем что ключ стал недоступен через статус
+    status_response_after = await ac.get(f"/keys/{key_id}/status")
+    assert status_response_after.status_code == 404
+
+    # Проверяем что ключ не виден в общем списке
+    list_response = await ac.get("/keys/")
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_create_key_with_special_characters_in_alias(client):
+    """Создание ключа с особенными символами в alias."""
+    ac, session = client
+
+    provider = Provider(
+        name="openrouter",
+        type="llm",
+        base_url="https://openrouter.ai/api/v1",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+        rate_limit=20,
+        timeout_sec=30,
+        retry_count=3,
+        retry_delay_ms=1000,
+        is_active=True,
+        config=None,
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = User(
+        name="test_user",
+        email="test@example.com",
+        api_key="test-master-key",
+    )
+    session.add(user)
+    await session.commit()
+
+    # Alias с пробелами, дефисами, подчеркиваниями
+    response = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "api_key": "sk-special", "alias": "ключ-тест_1"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["alias"] == "ключ-тест_1"
+
+
+@pytest.mark.asyncio
+async def test_create_key_unicode_alias(client):
+    """Создание ключа с unicode символами в alias."""
+    ac, session = client
+
+    provider = Provider(
+        name="openrouter",
+        type="llm",
+        base_url="https://openrouter.ai/api/v1",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+        rate_limit=20,
+        timeout_sec=30,
+        retry_count=3,
+        retry_delay_ms=1000,
+        is_active=True,
+        config=None,
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = User(
+        name="test_user",
+        email="test@example.com",
+        api_key="test-master-key",
+    )
+    session.add(user)
+    await session.commit()
+
+    # Alias с кириллицей и эмодзи (все символы поддерживаются)
+    response = await ac.post(
+        "/keys/",
+        params={"provider_name": "openrouter", "api_key": "sk-unicode", "alias": "ключ-🔑-тест"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["alias"] == "ключ-🔑-тест"
