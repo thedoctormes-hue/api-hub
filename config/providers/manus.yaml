@@ -14,7 +14,18 @@ retry:
   count: 2
   delay_ms: 2000
   backoff: exponential
+endpoints:
+  create_task: /task.create
+  task_detail: /task.detail
+  list_tasks: /task.list
+  send_message: /task.sendMessage
+  stop_task: /task.stop
+  list_agents: /agent.list
+  agent_detail: /agent.detail
+  upload_file: /file.upload
+  usage: /usage.availableCredits
 models: []
 health_check:
   enabled: true
   interval_sec: 120
+  endpoint: /usage.availableCredits

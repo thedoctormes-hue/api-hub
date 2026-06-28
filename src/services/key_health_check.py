@@ -109,7 +109,11 @@ async def check_key_health(session: AsyncSession, api_key: ApiKey) -> dict:
         return {"status": "error", "latency_ms": 0, "error_text": "Empty key value"}
 
     base_url = provider.base_url.rstrip("/")
-    health_endpoint = "/models" if provider.type == "llm" else "/health"
+    # Если у провайза задан кастомный health endpoint — используем его
+    if hasattr(provider, 'health_check_endpoint') and provider.health_check_endpoint:
+        health_endpoint = provider.health_check_endpoint
+    else:
+        health_endpoint = "/models" if provider.type == "llm" else "/health"
     url = f"{base_url}{health_endpoint}"
 
     headers = {}
