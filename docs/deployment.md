@@ -197,6 +197,144 @@ docker-compose --profile monitoring up -d
 
 ---
 
+## Systemd Service
+
+Для production-деплоя на VPS без Docker рекомендуется использовать systemd:
+
+### Установка
+
+```bash
+# Создать пользователя
+sudo useradd -r -s /bin/false api-hub
+
+# Развернуть код
+sudo mkdir -p /opt/api-hub
+sudo chown api-hub:api-hub /opt/api-hub
+cd /opt/api-hub
+git clone <repo> .
+
+# Создать venv и установить зависимости
+sudo -u api-hub python3 -m venv .venv
+sudo -u api-hub .venv/bin/pip install -r requirements.txt
+sudo -u api-hub .venv/bin/pip install gunicorn
+```
+
+### Service Unit
+
+Создать `/etc/systemd/system/api-hub.service`:
+
+```ini
+[Unit]
+Description=API Hub — Unified API Gateway
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=api-hub
+Group=api-hub
+WorkingDirectory=/opt/api-hub
+ExecStart=/opt/api-hub/.venv/bin/gunicorn src.main:app \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --workers 4 \
+  --bind 127.0.0.1:8000 \
+  --timeout 120 --access-logfile - --error-logfile -
+Environment=DATABASE_URL=postgresql+asyncpg://apihub:apihub@localhost:5432/apihub
+Environment=MASTER_KEY=your-secret-key-here
+Environment=LOG_LEVEL=INFO
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Активация
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable api-hub
+sudo systemctl start api-hub
+
+# Проверка статуса
+sudo systemctl status api-hub
+sudo journalctl -u api-hub -f
+```
+
+### Обновление
+
+```bash
+cd /opt/api-hub
+sudo -u api-hub git pull
+sudo -u api-hub .venv/bin/pip install -r requirements.txt
+sudo systemctl restart api-hub
+```
+
+### nginx Reverse Proxy
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api-hub.lab.local;
+
+    ssl_certificate /etc/ssl/certs/api-hub.crt;
+    ssl_certificate_key /etc/ssl/private/api-hub.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Ограничить доступ к /metrics
+    location /metrics {
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        deny all;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+```
+
+---
+
+## CI/CD
+
+### GitHub Actions
+
+Проект использует GitHub Actions (`.github/workflows/ci.yml`). Pipeline включает:
+
+1. **Lint** — ruff check + format validation
+2. **Test** — pytest с PostgreSQL service
+3. **Build** — Docker image build и smoke test
+4. **Push** — автоматический push в GHCR при merge в main
+
+### Локальный запуск CI
+
+```bash
+# Установить act (https://github.com/nektos/act)
+act push
+
+# Или через Docker
+docker run --rm -v $(pwd):/repo -w /repo ubuntu:latest bash -c \
+  "apt update && apt install -y python3-pip && pip install ruff && ruff check src/"
+```
+
+### Docker Registry
+
+Образы публикуются в GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/labdoctorm/api-hub:latest
+docker run -d -p 8000:8000 \
+  -e DATABASE_URL=postgresql+asyncpg://... \
+  -e MASTER_KEY=... \
+  ghcr.io/labdoctorm/api-hub:latest
+```
+
+---
+
 ## Устранение проблем
 
 ### Контейнер не поднялся
