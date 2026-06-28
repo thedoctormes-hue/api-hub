@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from src.config.database import init_db, close_db
 from src.middleware.rate_limit import RateLimitMiddleware
-from src.routes import keys, chat, models, health, metrics, metrics
+from src.routes import keys, chat, models, health, metrics
 from src.middleware.metrics import MetricsMiddleware
 from src.config.settings import get_settings
 
@@ -52,4 +52,3 @@ app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(keys.router, prefix="/keys", tags=["Keys"])
 app.include_router(chat.router, prefix="/v1", tags=["LLM"])
 app.include_router(models.router, prefix="/v1", tags=["Models"])
-app.include_router(metrics.router, tags=["Metrics"])

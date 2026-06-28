@@ -8,7 +8,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Приложение
     APP_NAME: str = "API Hub"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.2.0"
     DEBUG: bool = False
 
     # База данных

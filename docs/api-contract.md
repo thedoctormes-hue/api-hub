@@ -1,17 +1,59 @@
 # 📡 API-контракт
 
-**Версия:** 0.1 | **Дата:** 2026-06-19
+**Версия:** 0.2 | **Дата:** 2026-06-28
 
 ---
 
 ## Авторизация
 
-Все запросы к API Hub требуют заголовка:
+Все запросы к API Hub используют master-ключ для управления ключами и проксирование запросов к провайдерам через загруженные API-ключи.
+
 ```
-Authorization: Bearer <api_key>
+Authorization: Bearer <master_key>
 ```
 
-API-ключ выдаётся при регистрации агента.
+---
+
+## Health & Monitoring
+
+### Базовый health-check
+```
+GET /health
+
+Response 200:
+{
+  "status": "ok",
+  "service": "API Hub",
+  "version": "0.2.0",
+  "database": "ok"
+}
+```
+
+### Детальный health-check ключей
+```
+GET /health/keys
+
+Response 200:
+{
+  "status": "healthy | degraded | critical | no_keys",
+  "total_keys": 10,
+  "healthy_keys": 8,
+  "key_statuses": {"ok": 8, "error": 2},
+  "circuit_breakers": {"closed": 9, "open": 1},
+  "recent_errors_5m": 3
+}
+```
+
+### Prometheus метрики
+```
+GET /metrics
+
+Response 200 (text/plain; version=0.0.4):
+# HELP api_hub_requests_total Total number of requests
+# TYPE api_hub_requests_total counter
+api_hub_requests_total 1523
+...
+```
 
 ---
 
@@ -19,14 +61,7 @@ API-ключ выдаётся при регистрации агента.
 
 ### Загрузить ключ
 ```
-POST /keys
-Content-Type: application/json
-
-{
-  "provider": "openrouter",
-  "api_key": "sk-or-v1-xxxxxxxxxxxxxxxx",
-  "alias": "основной"
-}
+POST /keys/?provider_name=openrouter&api_key=sk-or-v1-xxx&alias=основной
 
 Response 201:
 {
@@ -34,26 +69,28 @@ Response 201:
   "provider": "openrouter",
   "alias": "основной",
   "status": "ok",
-  "created_at": "2026-06-19T14:00:00Z"
+  "created_at": "2026-06-28T14:00:00Z"
 }
 ```
+
+При повторной загрузке с тем же alias — обновляется существующий ключ (upsert).
 
 ### Список ключей
 ```
-GET /keys
+GET /keys/
 
 Response 200:
-{
-  "keys": [
-    {
-      "id": "uuid",
-      "provider": "openrouter",
-      "alias": "основной",
-      "status": "ok",
-      "last_used_at": "2026-06-19T14:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "user": "default_user",
+    "provider": "openrouter",
+    "alias": "основной",
+    "status": "ok",
+    "last_used_at": "2026-06-28T14:00:00Z",
+    "created_at": "2026-06-28T13:00:00Z"
+  }
+]
 ```
 
 ### Удалить ключ
@@ -63,7 +100,9 @@ DELETE /keys/{id}
 Response 204
 ```
 
-### Проверить ключ
+Soft delete — ключ помечается `is_active=False` и исключается из ротации.
+
+### Проверить статус ключа
 ```
 GET /keys/{id}/status
 
@@ -72,8 +111,8 @@ Response 200:
   "id": "uuid",
   "provider": "openrouter",
   "status": "ok",
-  "rate_limit_remaining": 100,
-  "checked_at": "2026-06-19T14:00:00Z"
+  "rate_limit_remaining": null,
+  "checked_at": "2026-06-28T14:00:00Z"
 }
 ```
 
@@ -129,238 +168,35 @@ Response 200:
 GET /v1/models
 
 Response 200:
-{
-  "models": [
-    {
-      "id": "openrouter/auto",
-      "provider": "openrouter",
-      "type": "llm",
-      "status": "available"
-    },
-    {
-      "id": "gpt-4o",
-      "provider": "openai",
-      "type": "llm",
-      "status": "available"
-    }
-  ]
-}
-```
-
----
-
-## Геокодирование
-
-### Геокод адреса
-```
-POST /v1/geocode
-Content-Type: application/json
-
-{
-  "query": "Москва, Красная площадь, 1"
-}
-
-Response 200:
-{
-  "results": [
-    {
-      "address": "г Москва, пл Красная, д 1",
-      "lat": 55.7535,
-      "lon": 37.6212,
-      "federal_district": "Центральный",
-      "region": "Москва"
-    }
-  ],
-  "_meta": {
-    "provider": "dadata",
-    "latency_ms": 120
+[
+  {
+    "id": "openrouter/auto",
+    "provider": "openrouter",
+    "type": "llm",
+    "status": "available"
   }
-}
-```
-
----
-
-## Валидация
-
-### Валидация email
-```
-POST /v1/validate/email
-Content-Type: application/json
-
-{
-  "value": "test@example.com"
-}
-
-Response 200:
-{
-  "valid": true,
-  "is_disposable": false,
-  "is_free": true,
-  "_meta": {
-    "provider": "abstractapi",
-    "latency_ms": 80
-  }
-}
-```
-
-### Валидация телефона
-```
-POST /v1/validate/phone
-Content-Type: application/json
-
-{
-  "value": "+79991234567"
-}
-
-Response 200:
-{
-  "valid": true,
-  "country": "RU",
-  "carrier": "MTS",
-  "type": "mobile",
-  "_meta": {
-    "provider": "abstractapi",
-    "latency_ms": 90
-  }
-}
-```
-
----
-
-## Скрапинг
-
-### Скрапинг URL
-```
-POST /v1/scrape
-Content-Type: application/json
-
-{
-  "url": "https://example.com",
-  "render_js": false
-}
-
-Response 200:
-{
-  "status": "ok",
-  "content": "<html>...</html>",
-  "content_type": "text/html",
-  "_meta": {
-    "provider": "scraperapi",
-    "latency_ms": 2000
-  }
-}
-```
-
----
-
-## Генерация PDF
-
-### Генерация PDF из HTML
-```
-POST /v1/generate/pdf
-Content-Type: application/json
-
-{
-  "html": "<h1>Отчёт</h1><p>Текст отчёта</p>",
-  "filename": "report.pdf",
-  "format": "A4"
-}
-
-Response 200:
-{
-  "url": "https://storage.example.com/reports/report.pdf",
-  "expires_at": "2026-06-20T14:00:00Z",
-  "_meta": {
-    "provider": "pdfgeneratorapi",
-    "latency_ms": 1500
-  }
-}
-```
-
----
-
-## Квоты
-
-### Получить текущие квоты
-```
-GET /quotas
-
-Response 200:
-{
-  "quotas": [
-    {
-      "provider": "openrouter",
-      "period": "day",
-      "limit": 1000,
-      "used": 234,
-      "remaining": 766,
-      "reset_at": "2026-06-20T00:00:00Z"
-    }
-  ]
-}
-```
-
----
-
-## Метрики
-
-### Метрики использования
-```
-GET /metrics?period=day
-
-Response 200:
-{
-  "period": "day",
-  "total_requests": 1523,
-  "total_tokens_in": 450000,
-  "total_tokens_out": 120000,
-  "avg_latency_ms": 350,
-  "error_rate": 0.02,
-  "by_provider": [
-    {
-      "provider": "openrouter",
-      "requests": 1200,
-      "tokens_in": 350000,
-      "avg_latency_ms": 300
-    },
-    {
-      "provider": "openai",
-      "requests": 323,
-      "tokens_in": 100000,
-      "avg_latency_ms": 500
-    }
-  ]
-}
+]
 ```
 
 ---
 
 ## Ошибки
 
-Все ошибки возвращаются в едином формате:
+Все ошибки возвращаются в стандартном FastAPI формате:
 
 ```json
 {
-  "error": {
-    "code": "rate_limit_exceeded",
-    "message": "Rate limit exceeded for provider openrouter",
-    "details": {
-      "provider": "openrouter",
-      "retry_after": 60
-    }
-  }
+  "detail": "Описание ошибки"
 }
 ```
 
-### Коды ошибок
+### Коды ответов
 
-| Код | HTTP | Описание |
-|---|---|---|
-| `unauthorized` | 401 | Невалидный API-ключ |
-| `forbidden` | 403 | Нет доступа к провайдеру |
-| `not_found` | 404 | Ключ или провайдер не найден |
-| `rate_limit_exceeded` | 429 | Превышен rate limit |
-| `provider_error` | 502 | Ошибка провайдера |
-| `all_providers_failed` | 503 | Все провайдеры недоступны |
-| `quota_exceeded` | 429 | Превышена квота |
-| `validation_error` | 400 | Ошибка валидации запроса |
+| Код | Описание |
+|---|---|
+| 200 | Успех |
+| 201 | Создано (ключ загружен) |
+| 204 | Удалено (ключ деактивирован) |
+| 400 | Нет активных LLM-ключей или невалидный запрос |
+| 404 | Ключ или провайдер не найден |
+| 502 | Ошибка провайдера (HTTPStatusError или таймаут) |

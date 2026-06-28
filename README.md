@@ -2,7 +2,7 @@
 
 > Единый API-шлюз для всех внешних API. Загружаешь свои ключи — получаешь один эндпоинт для всего.
 
-**Статус:** MVP готов | **Версия:** 0.1.0 | **Создано:** 2026-06-19
+**Статус:** v0.2 | **Версия:** 0.2.0 | **Обновлено:** 2026-06-28
 
 ---
 
@@ -14,7 +14,7 @@
 
 ## Бесплатные ключи
 
-Проект интегрирован с free-api-hunter. Предзагружены 29 бесплатных ключей от 10 провайдеров: Cerebras, Cohere, Mistral, Cloudflare Workers AI, ElevenLabs, Gemini, Manus, Pollinations, OCR.space, AbstractAPI.
+Проект интегрирован с free-api-hunter. Предзагружены бесплатные ключи от 10+ провайдеров: Cerebras, Cohere, Mistral, Cloudflare Workers AI, ElevenLabs, Gemini, Manus, Pollinations, OCR.space, AbstractAPI.
 
 Ключи автоматически проверяются health-check сервисом. Неработающие отключаются через circuit breaker (3 ошибки → cooldown 5 мин).
 
@@ -97,29 +97,42 @@ ApiKey (1) → (1) CircuitBreaker
 - **L2** — приоритет по rate limit (проксируем на самый свободный)
 - **L3** — circuit breaker на каждого провайдера
 
-### Провайдеры (7 в MVP)
-| Провайдер | Тип | Авторизация |
-|---|---|---|
-| openrouter | llm | Bearer |
-| openai | llm | Bearer |
-| anthropic | llm | Header (x-api-key) |
-| dadata | geocode | Header (Authorization) |
-| abstractapi | validate | Query param |
-| scraperapi | scrape | Query param |
-| pdfgeneratorapi | generate | Bearer |
+### Провайдеры (16 в v0.2)
+| Провайдер | Тип | Авторизация | Бесплатный |
+|---|---|---|---|
+| openrouter | llm | Bearer | 20 req/min |
+| openai | llm | Bearer | нет |
+| anthropic | llm | Header | нет |
+| cerebras | llm | Bearer | да |
+| cloudflare | llm | Bearer | да |
+| cohere | llm | Bearer | да |
+| gemini | llm | Query param | да |
+| mistral | llm | Bearer | да |
+| dadata | geocode | Header | 10000/день |
+| abstractapi | validate | Query param | 100/мес |
+| scraperapi | scrape | Query param | 1000/мес |
+| pdfgeneratorapi | generate | Bearer | 3/день |
+| ocr-space | ocr | Header | да |
+| elevenlabs | tts | Header | да |
+| pollinations | image | none | да |
+| manus | agent | Header | да |
 
 ---
 
 ## Тестирование
 
 ```bash
-# Запуск тестов
+# Запуск всех тестов
 python3 -m pytest tests/ -v
 
 # С coverage
 python3 -m pytest tests/ --cov=src --cov-report=term-missing
+
+# Конкретный модуль
+python3 -m pytest tests/test_health_check.py -v
 ```
 
+74+ тестов покрывают: модели, роуты, health-check, circuit breaker, метрики.
 Тесты используют SQLite in-memory с dependency override (без реального PostgreSQL).
 
 ---
@@ -132,14 +145,69 @@ python3 -m pytest tests/ --cov=src --cov-report=term-missing
 
 ---
 
+## Deployment
+
+### Docker (рекомендуемый)
+
+```bash
+# Сборка и запуск
+docker-compose up -d --build
+
+# Проверка статуса
+docker-compose ps
+docker-compose logs -f api-hub
+
+# Остановка
+docker-compose down
+```
+
+### Ручной запуск
+
+```bash
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Переменные окружения
+export DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/apihub
+export MASTER_KEY=your-secret-master-key
+
+# Запуск
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Переменные окружения
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@db:5432/apihub` | URL базы данных |
+| `MASTER_KEY` | `dev-master-key` | Мастер-ключ для управления |
+| `APP_VERSION` | `0.2.0` | Версия сервиса |
+| `LOG_LEVEL` | `INFO` | Уровень логирования |
+
+### Проверка работоспособности
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Метрики Prometheus
+curl http://localhost:8000/metrics
+
+# Список ключей
+curl http://localhost:8000/keys/
+```
+
+---
+
 ## Roadmap
 
 | Этап | Что |
 |---|---|
-| ✅ MVP | FastAPI прокси, 7 провайдеров, 6 моделей, тесты |
-| v2 | lab-vault интеграция, circuit breaker, per-agent квоты |
-| v2 | Fallback между провайдерами, не-LLM эндпоинты |
-| v3 | Go gateway, Prometheus/Grafana, публичный продукт |
+| ✅ MVP | FastAPI прокси, 7 провайдеров, тесты |
+| ✅ v0.2 | 16 провайдеров, circuit breaker, health-check, Prometheus метрики, 74+ тестов |
+| v0.3 | lab-vault интеграция, per-agent квоты, API contract v2 |
+| v1.0 | Fallback между провайдерами, не-LLM эндпоинты, rate limiting |
+| v2.0 | Go gateway, Prometheus/Grafana, публичный продукт |
 
 ---
 

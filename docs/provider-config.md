@@ -1,169 +1,161 @@
 # ⚙️ Конфигурация провайдеров
 
-**Версия:** 0.1 | **Дата:** 2026-06-19
+**Версия:** 0.2 | **Дата:** 2026-06-28
 
 ---
 
-## Формат конфигурации
+## Обзор
 
-Провайдеры описываются в YAML-файлах в `config/providers/` и загружаются при старте.
-
-### Структура файла
-
-```yaml
-# config/providers/openrouter.yaml
-name: openrouter
-type: llm
-base_url: https://openrouter.ai/api/v1
-auth:
-  type: bearer
-  header: Authorization
-  prefix: "Bearer "
-rate_limit:
-  requests_per_minute: 20
-  requests_per_day: 200
-timeout: 30
-retry:
-  count: 3
-  delay_ms: 1000
-  backoff: exponential
-models:
-  - id: openrouter/auto
-    name: Auto
-    type: chat
-    max_tokens: 128000
-  - id: anthropic/claude-sonnet-4
-    name: Claude Sonnet 4
-    type: chat
-    max_tokens: 200000
-health_check:
-  enabled: true
-  interval_sec: 15
-  endpoint: /models
-```
+API Hub поддерживает 16 првайдеров в 5 категориях. Конфигурация хранится в YAML-файлах (`config/providers/`) и сидируется в PostgreSQL при первом запуске.
 
 ---
 
 ## Типы провайдеров
 
-### LLM
-```yaml
-type: llm
-base_url: https://...
-auth:
-  type: bearer
-models:
-  - id: model-id
-    name: Human Name
-    type: chat | completion
-    max_tokens: 128000
-```
-
-### Geocode
-```yaml
-type: geocode
-base_url: https://suggestions.dadata.ru/suggestions/api/4_1/rs
-auth:
-  type: header
-  header: Authorization
-  prefix: "Token "
-```
-
-### Validate
-```yaml
-type: validate
-base_url: https://emailvalidation.abstractapi.com/v1
-auth:
-  type: query_param
-  param: api_key
-```
-
-### Scrape
-```yaml
-type: scrape
-base_url: https://api.scraperapi.com
-auth:
-  type: query_param
-  param: api_key
-```
-
-### Generate
-```yaml
-type: generate
-base_url: https://us1.pdfgeneratorapi.com/api/v4
-auth:
-  type: bearer
-```
+**llm** — языковые модели (chat completions)
+**geocode** — геокодирование адресов
+**validate** — валидация email/телефонов
+**scrape** — веб-скрапинг
+**generate** — генерация документов (PDF)
+**ocr** — оптическое распознавание текста
+**tts** — текст в речь
+**image** — генерация изображений
+**agent** — AI-агенты
 
 ---
 
-## Дефолтные провайдеры (предзаполненные)
+## Аутентификация
 
-### LLM
-| Провайдер | Base URL | Auth | Бесплатный tier |
-|---|---|---|---|
-| OpenRouter | openrouter.ai/api/v1 | bearer | 20 req/min, 200/day |
-| OpenAI | api.openai.com/v1 | bearer | нет |
-| Anthropic | api.anthropic.com | header (x-api-key) | нет |
-| Groq | api.groq.com/openai/v1 | bearer | есть |
-| Mistral | api.mistral.ai/v1 | bearer | есть |
-| Together AI | api.together.xyz/v1 | bearer | есть ($25 credit) |
-| Google AI | generativelanguage.googleapis.com | query_param | есть |
+**bearer** — заголовок `Authorization: Bearer <key>`
+**header** — произвольный заголовок (например, `x-api-key`)
+**query_param** — ключ передаётся как query-параметр
 
-### Гео
-| Провайдер | Base URL | Auth | Бесплатный tier |
-|---|---|---|---|
-| DaData | suggestions.dadata.ru | header (Token) | 10000 день |
+---
 
-### Валидация
-| Провайдер | Base URL | Auth | Бесплатный tier |
-|---|---|---|---|
-| AbstractAPI | emailvalidation.abstractapi.com | query_param | 100/мес |
+## Полный список провайдеров (16)
 
-### Скрапинг
-| Провайдер | Base URL | Auth | Бесплатный tier |
-|---|---|---|---|
-| ScraperAPI | api.scraperapi.com | query_param | 1000/мес |
+### LLM (8 провайдеров)
 
-### Генерация
-| Провайдер | Base URL | Auth | Бесплатный tier |
-|---|---|---|---|
-| PDFGeneratorAPI | us1.pdfgeneratorapi.com | bearer | 3/день |
+**openrouter** (бесплатный tier)
+- Base URL: `https://openrouter.ai/api/v1`
+- Auth: bearer
+- Rate limit: 20 req/min
+- 200+ моделей через единый API
+
+**openai**
+- Base URL: `https://api.openai.com/v1`
+- Auth: bearer
+- Rate limit: 60 req/min
+
+**anthropic**
+- Base URL: `https://api.anthropic.com`
+- Auth: header (`x-api-key`)
+- Rate limit: 50 req/min
+
+**cerebras** (бесплатный)
+- Base URL: `https://api.cerebras.ai/v1`
+- Auth: bearer
+- Бесплатный tier через free-api-hunter
+
+**cloudflare** (бесплатный)
+- Base URL: `https://api.cloudflare.com/client/v1`
+- Auth: bearer
+- Workers AI модели
+
+**cohere** (бесплатный)
+- Base URL: `https://api.cohere.com/v1`
+- Auth: bearer
+- Command R, Embed модели
+
+**gemini** (бесплатный)
+- Base URL: `https://generativelanguage.googleapis.com/v1beta`
+- Auth: query_param
+- Google Gemini модели
+
+**mistral** (бесплатный)
+- Base URL: `https://api.mistral.ai/v1`
+- Auth: bearer
+- Mistral 7B, Mixtral модели
+
+### Геокодирование (1 провайдер)
+
+**dadata**
+- Base URL: `https://suggestions.dadata.ru/suggestions/api/4_1/rs`
+- Auth: header (`Authorization: Token <key>`)
+- Rate limit: 30 req/min
+
+### Валидация (1 провайдер)
+
+**abstractapi**
+- Base URL: `https://emailvalidation.abstractapi.com/v1`
+- Auth: query_param (`api_key`)
+- Rate limit: 10 req/min
+
+### Скрапинг (1 провайдер)
+
+**scraperapi**
+- Base URL: `https://api.scraperapi.com`
+- Auth: query_param (`api_key`)
+- Rate limit: 10 req/min
+
+### Генерация PDF (1 провайдер)
+
+**pdfgeneratorapi**
+- Base URL: `https://us1.pdfgeneratorapi.com/api/v4`
+- Auth: bearer
+- Rate limit: 5 req/min
+
+### OCR (1 провайдер)
+
+**ocr-space** (бесплатный)
+- Base URL: `https://api.ocr.space/parse/image`
+- Auth: header
+- Распознавание текста с изображений
+
+### TTS (1 провайдер)
+
+**elevenlabs** (бесплатный)
+- Base URL: `https://api.elevenlabs.io/v1`
+- Auth: header
+- Синтез речи
+
+### Генерация изображений (1 провайдер)
+
+**pollinations** (бесплатный)
+- Base URL: `https://image.pollinations.ai/prompt`
+- Auth: none (публичный API)
+- Генерация изображений по текстовому описанию
+
+### AI-агент (1 провайдер)
+
+**manus** (бесплатный)
+- Base URL: `https://api.manus.ai/v2`
+- Auth: header
+- Агентский API для выполнения задач
+
+---
+
+## Маршрутизация
+
+Приоритет выбора провайдера:
+1. Фильтрация по типу запроса (только `llm` для `/v1/chat/completions`)
+2. Только активные ключи (`is_active=True`)
+3. Только активные провайдеры (`is_active=True`)
+4. Сортировка по `rate_limit` (desc) — предпочитаем менее загруженных
+
+---
+
+## Circuit Breaker
+
+Каждый ключ имеет circuit breaker:
+- **closed** — нормальная работа
+- **open** — 3 ошибки подряд → cooldown 5 минут
+- **half-open** — после cooldown, пробный запрос. Успех → closed, ошибка → open
 
 ---
 
 ## Добавление нового провайдера
 
 1. Создать YAML-файл в `config/providers/`
-2. Описать формат запроса/ответа
-3. Добавить маппинг в `src/router/provider_map.go` (или аналог)
-4. Перезапустить сервис (или отправить SIGHUP для hot-reload)
-
----
-
-## Приоритеты и fallback
-
-Для каждого типа запроса можно задать цепочку провайдеров:
-
-```yaml
-# config/routing.yaml
-routing:
-  llm:
-    primary: openrouter
-    fallbacks:
-      - groq
-      - mistral
-      - together
-  geocode:
-    primary: dadata
-    fallbacks: []
-  validate:
-    primary: abstractapi
-    fallbacks: []
-  scrape:
-    primary: scraperapi
-    fallbacks: []
-  generate:
-    primary: pdfgeneratorapi
-    fallbacks: []
-```
+2. Добавить запись в `DEFAULT_PROVIDERS` в `src/config/database.py`
+3. Перезапустить сервис
