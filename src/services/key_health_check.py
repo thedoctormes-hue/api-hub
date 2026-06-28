@@ -109,12 +109,16 @@ async def check_key_health(session: AsyncSession, api_key: ApiKey) -> dict:
         return {"status": "error", "latency_ms": 0, "error_text": "Empty key value"}
 
     base_url = provider.base_url.rstrip("/")
-    # Если у провайза задан кастомный health endpoint — используем его
-    if hasattr(provider, 'health_check_endpoint') and provider.health_check_endpoint:
-        health_endpoint = provider.health_check_endpoint
+    # Если у ключа есть account_id (Cloudflare) — подставляем в URL
+    if hasattr(api_key, 'account_id') and api_key.account_id:
+        url = f"https://api.cloudflare.com/client/v4/accounts/{api_key.account_id}{provider.health_check_endpoint or '/ai/run/@cf/meta/llama-3.1-8b-instruct'}"
     else:
-        health_endpoint = "/models" if provider.type == "llm" else "/health"
-    url = f"{base_url}{health_endpoint}"
+        # Если у провайза задан кастомный health endpoint — используем его
+        if hasattr(provider, 'health_check_endpoint') and provider.health_check_endpoint:
+            health_endpoint = provider.health_check_endpoint
+        else:
+            health_endpoint = "/models" if provider.type == "llm" else "/health"
+        url = f"{base_url}{health_endpoint}"
 
     headers = {}
     params = {}

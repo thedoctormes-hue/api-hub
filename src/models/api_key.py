@@ -23,5 +23,6 @@ class ApiKey(Base):
     is_active = Column(Boolean, default=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     last_status = Column(String(16), nullable=True)  # ok, error, rate_limited
+    account_id = Column(String(64), nullable=True)  # для Cloudflare (account_id в URL)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

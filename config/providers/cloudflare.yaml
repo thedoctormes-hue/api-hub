@@ -2,7 +2,8 @@ name: cloudflare
 type: llm
 is_free: true
 free_source: free_api_hunter
-base_url: https://api.cloudflare.com/client/v1
+base_url: https://api.cloudflare.com/client/v4
+account_in_url: true  # Cloudflare требует account_id в пути
 auth:
   type: bearer
   header: Authorization
