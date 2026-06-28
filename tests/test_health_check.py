@@ -377,6 +377,132 @@ async def test_check_key_health_non_llm_provider(client):
         assert "/health" in call_args[0][0]
 
 
+@pytest.mark.asyncio
+async def test_check_key_health_query_param_auth_gemini(client):
+    """check_key_health использует query_param auth для провайдеров типа Gemini."""
+    ac, session = client
+
+    provider = _make_provider(
+        name="gemini_provider",
+        type="llm",
+        base_url="https://generativelanguage.googleapis.com/v1beta",
+        auth_type="query_param",
+        auth_key_name="key",
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = _make_user(session)
+    await session.flush()
+
+    api_key = _make_api_key(session, provider_id=provider.id, user_id=user.id)
+    await session.commit()
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"models": []}
+
+    with patch("src.services.key_health_check.httpx.AsyncClient") as MockClient, \
+         patch("src.services.key_health_check.resolve_key_from_vault", new_callable=AsyncMock, return_value="AIzaTestKey123"):
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get.return_value = mock_response
+        MockClient.return_value = mock_client
+
+        result = await check_key_health(session, api_key)
+        assert result["status"] == "ok"
+        # Проверяем, что ключ передан как query parameter
+        call_kwargs = mock_client.get.call_args
+        assert "params" in call_kwargs[1]
+        assert call_kwargs[1]["params"]["key"] == "AIzaTestKey123"
+
+
+@pytest.mark.asyncio
+async def test_check_key_health_account_id_cloudflare(client):
+    """check_key_health подставляет account_id в URL для Cloudflare."""
+    ac, session = client
+
+    provider = _make_provider(
+        name="cloudflare_ai",
+        type="llm",
+        base_url="https://api.cloudflare.com/client/v4",
+        auth_type="bearer",
+        auth_key_name="Authorization",
+    )
+    session.add(provider)
+    await session.flush()
+
+    user = _make_user(session)
+    await session.flush()
+
+    # Создаём ключ с account_id (Cloudflare использует account_id в URL)
+    api_key = _make_api_key(
+        session, 
+        provider_id=provider.id, 
+        user_id=user.id,
+        account_id="acc-1234567890"
+    )
+    await session.commit()
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"result": {"success": True}}
+
+    with patch("src.services.key_health_check.httpx.AsyncClient") as MockClient, \
+         patch("src.services.key_health_check.resolve_key_from_vault", new_callable=AsyncMock, return_value="test-token"):
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get.return_value = mock_response
+        MockClient.return_value = mock_client
+
+        result = await check_key_health(session, api_key)
+        assert result["status"] == "ok"
+        # Проверяем, что account_id подставлен в URL
+        call_args = mock_client.get.call_args
+        url = call_args[0][0]
+        assert "accounts/acc-1234567890" in url
+        assert url.startswith("https://api.cloudflare.com/client/v4/accounts/acc-1234567890")
+
+
+@pytest.mark.asyncio
+async def test_check_key_health_creates_health_log(client):
+    """check_key_health создаёт запись в key_health_log."""
+    ac, session = client
+
+    provider = _make_provider()
+    session.add(provider)
+    await session.flush()
+
+    user = _make_user(session)
+    await session.flush()
+
+    api_key = _make_api_key(session, provider_id=provider.id, user_id=user.id)
+    await session.commit()
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+
+    with patch("src.services.key_health_check.httpx.AsyncClient") as MockClient, \
+         patch("src.services.key_health_check.resolve_key_from_vault", new_callable=AsyncMock, return_value="test-key"):
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get.return_value = mock_response
+        MockClient.return_value = mock_client
+
+        await check_key_health(session, api_key)
+
+    from sqlalchemy import select
+    result = await session.execute(
+        select(KeyHealthLog).where(KeyHealthLog.api_key_id == api_key.id)
+    )
+    log = result.scalar_one_or_none()
+    assert log is not None
+    assert log.status == "ok"
+
+
 # --- _update_circuit_breaker ---
 
 @pytest.mark.asyncio

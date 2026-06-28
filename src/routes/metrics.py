@@ -11,6 +11,7 @@ Exposes /metrics in Prometheus text format with:
 import logging
 import time
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 
 from fastapi import APIRouter, Response
 from sqlalchemy import func, select
