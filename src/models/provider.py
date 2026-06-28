@@ -22,6 +22,8 @@ class Provider(Base):
     retry_count = Column(Integer, nullable=False, default=3)
     retry_delay_ms = Column(Integer, nullable=False, default=1000)
     is_active = Column(Boolean, default=True)
+    is_free = Column(Boolean, nullable=False, default=False)
+    free_source = Column(String(32), nullable=True)  # free_api_hunter, manual
     config = Column(JSON, nullable=True)  # доп. настройки провайдера
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

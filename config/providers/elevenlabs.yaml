@@ -1,0 +1,26 @@
+name: elevenlabs
+type: tts
+is_free: true
+free_source: free_api_hunter
+base_url: https://api.elevenlabs.io/v1
+auth:
+  type: header
+  header: xi-api-key
+rate_limit:
+  characters_per_month: 10000
+timeout: 30
+retry:
+  count: 2
+  delay_ms: 1000
+  backoff: exponential
+models:
+- id: eleven_multilingual_v2
+  name: Multilingual v2
+  type: tts
+- id: eleven_turbo_v2
+  name: Turbo v2
+  type: tts
+health_check:
+  enabled: true
+  interval_sec: 60
+  endpoint: /models

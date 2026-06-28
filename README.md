@@ -12,6 +12,12 @@
 
 **Ключевая идея:** все существующие решения (OpenRouter, LiteLLM) — только про LLM. Мы делаем **универсальный шлюз для любых API**.
 
+## Бесплатные ключи
+
+Проект интегрирован с free-api-hunter. Предзагружены 25 бесплатных ключей от 9 провайдеров: Cerebras, Cohere, Mistral, Cloudflare Workers AI, ElevenLabs, Gemini, Manus, Pollinations, OCR.space.
+
+Ключи автоматически проверяются health-check сервисом. Неработающие отключаются через circuit breaker (3 ошибки → cooldown 5 мин).
+
 ---
 
 ## Быстрый старт
