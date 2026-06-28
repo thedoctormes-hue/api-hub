@@ -14,7 +14,7 @@
 
 ## Бесплатные ключи
 
-Проект интегрирован с free-api-hunter. Предзагружены 25 бесплатных ключей от 9 провайдеров: Cerebras, Cohere, Mistral, Cloudflare Workers AI, ElevenLabs, Gemini, Manus, Pollinations, OCR.space.
+Проект интегрирован с free-api-hunter. Предзагружены 29 бесплатных ключей от 10 провайдеров: Cerebras, Cohere, Mistral, Cloudflare Workers AI, ElevenLabs, Gemini, Manus, Pollinations, OCR.space, AbstractAPI.
 
 Ключи автоматически проверяются health-check сервисом. Неработающие отключаются через circuit breaker (3 ошибки → cooldown 5 мин).
 
