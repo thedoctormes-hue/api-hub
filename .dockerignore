@@ -1,9 +1,53 @@
-.venv
+# Git
+.git
+.gitignore
+
+# Python
 __pycache__
 *.pyc
-.git
-.github
+*.pyo
+*.egg-info
+.venv
+venv
+env
+dist
+build
+*.egg
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.ruff_cache
+.qwen
+
+# Logs
+logs
+*.log
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in runtime image)
 docs
 tests
 *.md
-.env
+LICENSE
+
+# CI
+.github

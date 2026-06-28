@@ -30,6 +30,8 @@ docker-compose.override.yml
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
+.qwen/
 
 # Logs
 *.log
